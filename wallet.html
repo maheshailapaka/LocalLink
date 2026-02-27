@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}My Wallet – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.wallet-card { background:linear-gradient(135deg,#667eea,#764ba2); border-radius:20px; color:#fff; padding:32px; }
+.wallet-balance { font-size:3rem; font-weight:900; font-family:'Syne',sans-serif; }
+.txn-credit { border-left:4px solid #43e97b; }
+.txn-debit  { border-left:4px solid #ff6b6b; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row g-4">
+<div class="col-lg-5">
+  <div class="wallet-card shadow mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <div class="small opacity-75 text-uppercase fw-bold">Local Link Wallet</div>
+        <div class="wallet-balance">₹{{ "%.2f"|format(wallet.balance) }}</div>
+        <div class="opacity-75 small">Available Balance</div>
+      </div>
+      <i class="bi bi-wallet2" style="font-size:2.5rem;opacity:.5;"></i>
+    </div>
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addFundsModal">
+        <i class="bi bi-plus-circle me-1"></i>Add Money
+      </button>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light btn-sm">Dashboard</a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header fw-bold bg-light">How Wallet Works</div>
+    <div class="card-body">
+      <div class="d-flex align-items-start gap-3 mb-3">
+        <div style="width:36px;height:36px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-arrow-down-circle text-success"></i>
+        </div>
+        <div><div class="fw-semibold small">Add Money</div><div class="text-muted small">Top up your wallet anytime</div></div>
+      </div>
+      <div class="d-flex align-items-start gap-3 mb-3">
+        <div style="width:36px;height:36px;border-radius:50%;background:#e3f2fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-cart text-primary"></i>
+        </div>
+        <div><div class="fw-semibold small">Pay for Services</div><div class="text-muted small">Use wallet balance at checkout</div></div>
+      </div>
+      <div class="d-flex align-items-start gap-3">
+        <div style="width:36px;height:36px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-arrow-up-circle text-warning"></i>
+        </div>
+        <div><div class="fw-semibold small">Earn from Services</div><div class="text-muted small">Providers receive earnings here</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="col-lg-7">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center bg-light">
+      <h6 class="fw-bold mb-0">Transaction History</h6>
+      <span class="badge bg-primary">Last 30</span>
+    </div>
+    <div class="card-body p-0">
+      {% if transactions %}
+        {% for txn in transactions %}
+        <div class="p-3 border-bottom {{ 'txn-credit' if txn.type=='credit' else 'txn-debit' }} ms-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold small">{{ txn.description }}</div>
+              <div class="text-muted" style="font-size:11px;">{{ txn.created_at[:16] }}</div>
+            </div>
+            <div class="fw-bold {{ 'text-success' if txn.type=='credit' else 'text-danger' }}">
+              {{ '+' if txn.type=='credit' else '-' }}₹{{ "%.2f"|format(txn.amount) }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-receipt" style="font-size:2.5rem;opacity:.3;"></i>
+          <p class="mt-2">No transactions yet.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Add Funds Modal -->
+<div class="modal fade" id="addFundsModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;">
+        <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i>Add Money</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('wallet_add_funds') }}">
+          <label class="form-label fw-semibold">Amount (₹)</label>
+          <input type="number" name="amount" class="form-control mb-3" min="10" max="50000" placeholder="e.g. 500" required>
+          <div class="d-flex gap-2 flex-wrap mb-3">
+            {% for amt in [100,200,500,1000,2000] %}
+            <button type="button" class="btn btn-outline-primary btn-sm quick-amt" onclick="document.querySelector('[name=amount]').value={{ amt }}">₹{{ amt }}</button>
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Add to Wallet</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

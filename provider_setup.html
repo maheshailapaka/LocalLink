@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Provider Setup - Local Link{% endblock %}
+
+{% block content %}
+
+<!-- Google Maps JavaScript API -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places" async defer></script>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body p-5">
+                <h2 class="text-center mb-4">Complete Your Provider Profile</h2>
+                <p class="text-center text-muted mb-4">Fill in the details below to start receiving bookings</p>
+                
+                <form method="POST" action="{{ url_for('provider_setup') }}" id="providerForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Business/Your Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="service_type" class="form-label">Service Type</label>
+                            <select class="form-select" id="service_type" name="service_type" required>
+                                <option value="">Choose...</option>
+                                <option value="Plumbing">Plumbing</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Mechanics">Mechanics</option>
+                                <option value="House Cleaning">House Cleaning</option>
+                                <option value="Beauty & Salon">Beauty & Salon</option>
+                                <option value="Home Repair">Home Repair</option>
+                                <option value="Carpentry">Carpentry</option>
+                                <option value="Painting">Painting</option>
+                                <option value="Pest Control">Pest Control</option>
+                                <option value="Gardening">Gardening</option>
+                                <option value="AC Repair">AC Repair</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="experience" class="form-label">Years of Experience</label>
+                            <input type="number" class="form-control" id="experience" name="experience" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" placeholder="e.g., Mumbai" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="locality" class="form-label">Locality</label>
+                            <input type="text" class="form-control" id="locality" name="locality" placeholder="e.g., Andheri West" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Map Location Picker -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-geo-alt-fill text-danger"></i> Select Your Location on Map (Optional)
+                        </label>
+                        <div id="map" style="height: 300px; width: 100%; border-radius: 8px; border: 2px solid #e0e0e0;"></div>
+                        <small class="text-muted">Click on the map to set your location or we'll use the city/locality you entered</small>
+                    </div>
+                    
+                    <!-- Hidden fields for coordinates -->
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Your profile will be reviewed by admin before becoming visible to customers.
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-2">Submit for Approval</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let map;
+    let marker;
+    
+    function initMap() {
+        // Default location (Mumbai)
+        const defaultLocation = { lat: 19.0760, lng: 72.8777 };
+        
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: defaultLocation,
+            zoom: 12
+        });
+        
+        // Add click listener to map
+        map.addListener('click', (event) => {
+            placeMarker(event.latLng);
+        });
+        
+        // Initialize autocomplete for city
+        const cityInput = document.getElementById('city');
+        const localityInput = document.getElementById('locality');
+        
+        const autocomplete = new google.maps.places.Autocomplete(cityInput, {
+            types: ['(cities)'],
+            componentRestrictions: { country: 'IN' }
+        });
+        
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            if (place.geometry) {
+                map.setCenter(place.geometry.location);
+                map.setZoom(13);
+            }
+        });
+    }
+    
+    function placeMarker(location) {
+        if (marker) {
+            marker.setPosition(location);
+        } else {
+            marker = new google.maps.Marker({
+                position: location,
+                map: map,
+                draggable: true,
+                icon: {
+                    url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                }
+            });
+            
+            marker.addListener('dragend', (event) => {
+                updateCoordinates(event.latLng);
+            });
+        }
+        
+        updateCoordinates(location);
+    }
+    
+    function updateCoordinates(location) {
+        document.getElementById('latitude').value = location.lat();
+        document.getElementById('longitude').value = location.lng();
+    }
+    
+    // Wait for Google Maps to load
+    window.addEventListener('load', () => {
+        if (typeof google !== 'undefined') {
+            initMap();
+        }
+    });
+</script>
+
+{% endblock %}

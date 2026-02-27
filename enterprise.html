@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Enterprise Accounts – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.enterprise-hero { background:linear-gradient(135deg,#1a1f36,#2E4057); border-radius:20px; color:#fff; padding:48px 40px; }
+.benefit-icon { width:56px; height:56px; border-radius:16px; display:flex; align-items:center;
+                justify-content:center; font-size:1.5rem; flex-shrink:0; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="enterprise-hero mb-5 shadow">
+  <div class="row align-items-center">
+    <div class="col-lg-7">
+      <div class="text-uppercase small fw-bold mb-2" style="color:#667eea;letter-spacing:2px;">Enterprise</div>
+      <h2 class="fw-bold mb-3" style="font-family:'Syne',sans-serif;">Scale With Local Link</h2>
+      <p class="opacity-75 mb-4">Dedicated service infrastructure for corporates, housing societies, and large enterprises. Priority service, bulk pricing, and dedicated account management.</p>
+      <div class="d-flex gap-3 flex-wrap">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span class="small">Credit-based billing</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span class="small">Multi-city coverage</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span class="small">Priority SLA</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span class="small">Custom reports</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5 mt-4 mt-lg-0">
+      <div class="bg-white text-dark rounded-3 p-4 shadow">
+        <h6 class="fw-bold mb-3">Request Enterprise Access</h6>
+        <form method="POST" action="{{ url_for('enterprise_register') }}">
+          <div class="mb-3">
+            <input type="text" name="company_name" class="form-control" placeholder="Company Name" required>
+          </div>
+          <div class="mb-3">
+            <input type="text" name="contact_person" class="form-control" placeholder="Contact Person" required>
+          </div>
+          <div class="mb-3">
+            <input type="email" name="email" class="form-control" placeholder="Business Email" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <input type="text" name="phone" class="form-control" placeholder="Phone">
+            </div>
+            <div class="col-6">
+              <input type="text" name="city" class="form-control" placeholder="City">
+            </div>
+          </div>
+          <div class="mb-3">
+            <input type="text" name="gst_number" class="form-control" placeholder="GST Number (optional)">
+          </div>
+          <button type="submit" class="btn btn-primary w-100 fw-bold">
+            <i class="bi bi-building me-1"></i>Register Enterprise
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Benefits -->
+<div class="row g-4 mb-5">
+  {% for icon, bg, title, desc in [
+    ('bi-lightning-charge-fill','#fff3e0','Priority Response','SLA-backed response times with dedicated emergency lines for your team.'),
+    ('bi-graph-up-arrow','#e8f5e9','Custom Analytics','Monthly reports on service usage, spend, and provider performance.'),
+    ('bi-credit-card','#e3f2fd','Credit Billing','Monthly invoicing with GST-compliant receipts. No prepayment required.'),
+    ('bi-geo-alt-fill','#fce4ec','Multi-City','One account, multiple cities. Ideal for companies with pan-India presence.'),
+    ('bi-headset','#f3e5f5','Dedicated Support','Dedicated account manager reachable via phone, email, and WhatsApp.'),
+    ('bi-percent','#e0f7fa','Negotiated Rates','Bulk discount pricing based on monthly service volume.'),
+  ] %}
+  <div class="col-md-4">
+    <div class="d-flex gap-3">
+      <div class="benefit-icon" style="background:{{ bg }};">
+        <i class="bi {{ icon }}" style="color:#667eea;"></i>
+      </div>
+      <div>
+        <div class="fw-bold mb-1">{{ title }}</div>
+        <div class="text-muted small">{{ desc }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Admin: account list -->
+{% if session.user_role == 'admin' and accounts %}
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white fw-bold">
+    <i class="bi bi-building me-2"></i>Enterprise Accounts
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>Company</th><th>Contact</th><th>City</th><th>Credit Limit</th><th>Credit Used</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for acc in accounts %}
+          <tr>
+            <td><div class="fw-semibold">{{ acc.company_name }}</div><small class="text-muted">{{ acc.email }}</small></td>
+            <td>{{ acc.contact_person }}<br><small>{{ acc.phone }}</small></td>
+            <td>{{ acc.city or '—' }}</td>
+            <td>₹{{ "%.0f"|format(acc.credit_limit) }}</td>
+            <td>₹{{ "%.0f"|format(acc.credit_used) }}</td>
+            <td>
+              {% if acc.status=='active' %}<span class="badge bg-success">Active</span>
+              {% else %}<span class="badge bg-secondary">{{ acc.status }}</span>{% endif %}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                      data-bs-target="#editModal{{ acc.id }}">Edit</button>
+              <!-- Edit modal -->
+              <div class="modal fade" id="editModal{{ acc.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header"><h6 class="modal-title">Edit Enterprise</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <form method="POST" action="{{ url_for('update_enterprise', account_id=acc.id) }}">
+                      <div class="modal-body">
+                        <label class="form-label small fw-semibold">Credit Limit (₹)</label>
+                        <input type="number" name="credit_limit" class="form-control mb-3" value="{{ acc.credit_limit }}">
+                        <label class="form-label small fw-semibold">Status</label>
+                        <select name="status" class="form-select">
+                          <option value="active" {% if acc.status=='active' %}selected{% endif %}>Active</option>
+                          <option value="suspended" {% if acc.status=='suspended' %}selected{% endif %}>Suspended</option>
+                        </select>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Subscription Plans – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.plan-card { border-radius:20px; transition:.2s; border:2px solid transparent; }
+.plan-card:hover { transform:translateY(-6px); box-shadow:0 20px 40px rgba(0,0,0,.12)!important; }
+.plan-popular { border-color:#667eea; position:relative; }
+.plan-popular::before { content:'⭐ Most Popular'; position:absolute; top:-16px; left:50%;
+  transform:translateX(-50%); background:#667eea; color:#fff; font-size:12px;
+  font-weight:700; padding:4px 16px; border-radius:20px; white-space:nowrap; }
+.plan-price { font-size:2.5rem; font-weight:900; font-family:'Syne',sans-serif; }
+.feature-tick { color:#43e97b; font-size:1.1rem; }
+.active-sub { background:linear-gradient(135deg,#667eea,#764ba2); border-radius:16px; color:#fff; padding:20px; }
+</style>
+{% endblock %}
+{% block content %}
+
+{% if active_subscription %}
+<div class="active-sub mb-5 shadow">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <div class="small opacity-75 text-uppercase fw-bold mb-1">Active Subscription</div>
+      <h4 class="fw-bold mb-1">{{ active_subscription.plan_name }} Plan 🎉</h4>
+      <div class="opacity-75 small">Valid until {{ active_subscription.ends_at[:10] }}</div>
+    </div>
+    <div class="text-end">
+      {% for feat in active_subscription.features.split(',') %}
+        <div class="small"><i class="bi bi-check-circle-fill me-1"></i>{{ feat.strip() }}</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="text-center mb-5">
+  <h2 class="fw-bold" style="font-family:'Syne',sans-serif;">Choose Your Plan</h2>
+  <p class="text-muted">Unlock premium features and grow faster on Local Link</p>
+</div>
+
+<div class="row g-4 justify-content-center">
+{% for plan in plans %}
+<div class="col-md-4">
+  <div class="card plan-card shadow-sm h-100 {% if loop.index == 2 %}plan-popular{% endif %}">
+    <div class="card-body p-4 d-flex flex-column">
+      <div class="text-center mb-4">
+        <div class="fw-bold text-uppercase text-muted small mb-2">{{ plan.name }}</div>
+        <div class="plan-price {% if loop.index==2 %}text-primary{% endif %}">₹{{ plan.price|int }}</div>
+        <div class="text-muted small">for {{ plan.duration_days }} days</div>
+      </div>
+
+      <ul class="list-unstyled mb-4 flex-grow-1">
+        {% for feat in plan.features.split(',') %}
+        <li class="mb-2">
+          <span class="feature-tick me-2">✓</span>
+          <span class="small">{{ feat.strip() }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+
+      {% if active_subscription and active_subscription.plan_name == plan.name %}
+        <button class="btn btn-success w-100" disabled>
+          <i class="bi bi-check-circle me-1"></i>Active
+        </button>
+      {% else %}
+        <form method="POST" action="{{ url_for('subscribe', plan_id=plan.id) }}">
+          <button type="submit" class="btn w-100 {% if loop.index==2 %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            {% if loop.index==2 %}<i class="bi bi-rocket me-1"></i>{% endif %}
+            Get {{ plan.name }}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<div class="row mt-5">
+  <div class="col-12">
+    <div class="card border-0 bg-light">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">Frequently Asked Questions</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="fw-semibold small">Can I cancel anytime?</div>
+            <div class="text-muted small">Yes. Your current plan stays active until the end date.</div>
+          </div>
+          <div class="col-md-6">
+            <div class="fw-semibold small">Is there a free trial?</div>
+            <div class="text-muted small">All new providers get 7 days free on the Basic plan.</div>
+          </div>
+          <div class="col-md-6">
+            <div class="fw-semibold small">Can I upgrade mid-plan?</div>
+            <div class="text-muted small">Yes. Subscribing to a higher plan immediately activates it.</div>
+          </div>
+          <div class="col-md-6">
+            <div class="fw-semibold small">Do customers need to subscribe?</div>
+            <div class="text-muted small">No. Subscriptions are for service providers only.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

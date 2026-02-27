@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Local Link{% endblock %}
+
+{% block content %}
+<div class="hero-section text-center py-5 mb-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px;">
+    <div class="container">
+        <h1 class="display-3 fw-bold mb-3"><i class="bi bi-geo-alt-fill"></i> Local Link</h1>
+        <p class="lead fs-4 mb-4">Find Trusted Local Service Providers in Your Area</p>
+        <p class="fs-5 mb-4">New to the city? We connect you with verified professionals you can trust.</p>
+        {% if not session.user_id %}
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg px-5 me-md-2">Get Started</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg px-5">Login</a>
+            </div>
+        {% else %}
+            <a href="{{ url_for('search') }}" class="btn btn-light btn-lg px-5">Search Services</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12 text-center mb-4">
+        <h2 class="fw-bold">Popular Services</h2>
+        <p class="text-muted">Find the right professional for your needs</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="service-icon mb-3">
+                    <i class="bi bi-tools" style="font-size: 3rem; color: #667eea;"></i>
+                </div>
+                <h5 class="card-title">Plumbing</h5>
+                <p class="card-text text-muted">Expert plumbers for repairs, installations, and emergencies</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="service-icon mb-3">
+                    <i class="bi bi-lightning-charge" style="font-size: 3rem; color: #f093fb;"></i>
+                </div>
+                <h5 class="card-title">Electrical</h5>
+                <p class="card-text text-muted">Licensed electricians for all your electrical needs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="service-icon mb-3">
+                    <i class="bi bi-wrench" style="font-size: 3rem; color: #4facfe;"></i>
+                </div>
+                <h5 class="card-title">Mechanics</h5>
+                <p class="card-text text-muted">Reliable auto mechanics for vehicle maintenance</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="service-icon mb-3">
+                    <i class="bi bi-brush" style="font-size: 3rem; color: #43e97b;"></i>
+                </div>
+                <h5 class="card-title">House Cleaning</h5>
+                <p class="card-text text-muted">Professional cleaners for a spotless home</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="service-icon mb-3">
+                    <i class="bi bi-scissors" style="font-size: 3rem; color: #fa709a;"></i>
+                </div>
+                <h5 class="card-title">Beauty & Salon</h5>
+                <p class="card-text text-muted">Skilled beauticians and stylists near you</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <div class="service-icon mb-3">
+                    <i class="bi bi-house-door" style="font-size: 3rem; color: #ff6b6b;"></i>
+                </div>
+                <h5 class="card-title">Home Repair</h5>
+                <p class="card-text text-muted">Handymen for all types of home repairs</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12 text-center mb-4">
+        <h2 class="fw-bold">How It Works</h2>
+        <p class="text-muted">Three simple steps to find your local service provider</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="text-center">
+            <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                1
+            </div>
+            <h4>Search Services</h4>
+            <p class="text-muted">Find providers by location and service type in your area</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="text-center">
+            <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                2
+            </div>
+            <h4>Compare & Choose</h4>
+            <p class="text-muted">Check ratings, reviews, and pricing to make the best choice</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="text-center">
+            <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                3
+            </div>
+            <h4>Book & Connect</h4>
+            <p class="text-muted">Send booking requests and get your service done hassle-free</p>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+    <div class="card-body text-center p-5">
+        <h3 class="fw-bold mb-3">Are You a Service Provider?</h3>
+        <p class="fs-5 mb-4">Join Local Link and grow your business by connecting with customers in your area</p>
+        {% if not session.user_id %}
+            <a href="{{ url_for('register') }}" class="btn btn-light btn-lg px-5">Register as Provider</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Recommended For You - Local Link{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-lightbulb text-warning"></i> Recommended For You</h2>
+        <p class="text-muted">Based on your search and booking history, here are providers we think you'll love</p>
+    </div>
+</div>
+
+{% if providers %}
+<div class="row g-4">
+    {% for provider in providers %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm hover-shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">{{ provider.name }}</h5>
+                    <span class="badge bg-primary">{{ provider.service_type }}</span>
+                </div>
+                
+                <div class="mb-2">
+                    {% set avg_rating = provider.avg_rating %}
+                    {% for i in range(5) %}
+                        {% if i < avg_rating %}
+                            <i class="bi bi-star-fill text-warning"></i>
+                        {% else %}
+                            <i class="bi bi-star text-muted"></i>
+                        {% endif %}
+                    {% endfor %}
+                    <span class="text-muted small">({{ provider.review_count }} reviews)</span>
+                </div>
+                
+                <p class="card-text">
+                    <i class="bi bi-geo-alt-fill text-danger"></i> {{ provider.locality }}, {{ provider.city }}<br>
+                    <i class="bi bi-briefcase text-primary"></i> {{ provider.experience }} years experience<br>
+                    <i class="bi bi-telephone text-success"></i> {{ provider.phone }}
+                </p>
+                
+                <a href="{{ url_for('provider_detail', provider_id=provider.id) }}" class="btn btn-primary w-100">
+                    View Details & Book
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-lightbulb" style="font-size: 4rem; color: #ccc;"></i>
+    <h4 class="mt-3">No Recommendations Yet</h4>
+    <p class="text-muted">Start searching and booking services to get personalized recommendations!</p>
+    <a href="{{ url_for('search') }}" class="btn btn-primary mt-2">Start Searching</a>
+</div>
+{% endif %}
+
+<div class="card mt-4 border-info">
+    <div class="card-body">
+        <h6><i class="bi bi-robot text-info"></i> How AI Recommendations Work</h6>
+        <ul class="mb-0">
+            <li>We analyze your search patterns and preferences</li>
+            <li>We consider your booking history and ratings</li>
+            <li>We match you with highly-rated providers in your preferred categories</li>
+            <li>The more you use Local Link, the better our recommendations become!</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

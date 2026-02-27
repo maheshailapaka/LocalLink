@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Find Services – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.provider-card { transition: .2s; }
+.provider-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(102,126,234,.18) !important; }
+.filter-chip { cursor:pointer; user-select:none; }
+.filter-chip input:checked + label { background: #667eea; color: #fff; border-color: #667eea; }
+.verified-badge { background: #dcfce7; color: #166534; font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.emergency-badge { background: #fee2e2; color: #991b1b; font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.stars { color: #f59e0b; font-size: .85rem; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="mb-4">
+  <h3 class="fw-bold mb-0" style="font-family:'Syne',sans-serif;">
+    <i class="bi bi-search text-primary me-2"></i>Find Local Service Providers
+  </h3>
+  <p class="text-muted small">Trusted professionals in your area</p>
+</div>
+
+<!-- Search Form -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body p-4">
+    <form method="POST" action="{{ url_for('search') }}">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">City</label>
+          <input type="text" name="city" class="form-control"
+                 placeholder="e.g. Mumbai"
+                 value="{{ request.form.get('city', user_city) }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Locality</label>
+          <input type="text" name="locality" class="form-control"
+                 placeholder="e.g. Andheri West"
+                 value="{{ request.form.get('locality', '') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Service Type</label>
+          <select name="service_type" class="form-select">
+            <option value="">All Services</option>
+            {% for s in ['Plumbing','Electrical','Mechanics','House Cleaning','Beauty & Salon',
+                         'Home Repair','Carpentry','Painting','Pest Control','Gardening','AC Repair'] %}
+            <option value="{{ s }}" {% if request.form.get('service_type')==s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Min Rating</label>
+          <select name="min_rating" class="form-select">
+            <option value="0">Any Rating</option>
+            <option value="3" {% if request.form.get('min_rating')=='3' %}selected{% endif %}>3+ Stars</option>
+            <option value="4" {% if request.form.get('min_rating')=='4' %}selected{% endif %}>4+ Stars</option>
+            <option value="4.5" {% if request.form.get('min_rating')=='4.5' %}selected{% endif %}>4.5+ Stars</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Filter chips -->
+      <div class="d-flex gap-3 mt-3 flex-wrap align-items-center">
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" name="verified_only" id="verifiedOnly" value="1"
+                 {% if request.form.get('verified_only') %}checked{% endif %}>
+          <label class="form-check-label small fw-semibold" for="verifiedOnly">
+            <i class="bi bi-shield-check text-success me-1"></i>Verified Only
+          </label>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" name="emergency_only" id="emergencyOnly" value="1"
+                 {% if request.form.get('emergency_only') %}checked{% endif %}>
+          <label class="form-check-label small fw-semibold" for="emergencyOnly">
+            <i class="bi bi-lightning-charge text-danger me-1"></i>Emergency Available
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary ms-auto px-5">
+          <i class="bi bi-search me-1"></i>Search
+        </button>
+        {% if searched %}
+        <a href="{{ url_for('search') }}" class="btn btn-outline-secondary">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Results -->
+{% if providers %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="mb-0 text-muted">{{ providers|length }} provider{{ 's' if providers|length != 1 }} found</h6>
+  </div>
+  <div class="row g-4">
+    {% for p in providers %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card provider-card h-100 shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6 class="fw-bold mb-0">{{ p.name }}</h6>
+              <span class="badge bg-primary small mt-1">{{ p.service_type }}</span>
+            </div>
+            <span class="trust-score-badge">{{ p.trust_score }}</span>
+          </div>
+
+          <!-- Stars -->
+          <div class="stars mb-2">
+            {% set rating = p.avg_rating|float %}
+            {% for i in range(5) %}
+              {% if i < rating|int %}<i class="bi bi-star-fill"></i>
+              {% elif i < rating %}<i class="bi bi-star-half"></i>
+              {% else %}<i class="bi bi-star text-muted"></i>{% endif %}
+            {% endfor %}
+            <span class="text-muted small ms-1">({{ p.review_count }})</span>
+          </div>
+
+          <div class="text-muted small mb-3">
+            <div><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ p.locality }}, {{ p.city }}</div>
+            <div><i class="bi bi-briefcase text-primary me-1"></i>{{ p.experience }} yrs exp</div>
+            <div><i class="bi bi-telephone text-success me-1"></i>{{ p.phone }}</div>
+          </div>
+
+          <!-- Badges row -->
+          <div class="d-flex gap-2 mb-3 flex-wrap">
+            {% if p.is_verified %}<span class="verified-badge"><i class="bi bi-shield-check me-1"></i>Verified</span>{% endif %}
+            {% if p.is_emergency %}<span class="emergency-badge"><i class="bi bi-lightning-charge me-1"></i>Emergency</span>{% endif %}
+            {% if p.is_featured %}<span class="badge bg-warning text-dark">Featured</span>{% endif %}
+          </div>
+
+          <a href="{{ url_for('provider_detail', provider_id=p.id) }}" class="btn btn-primary w-100 btn-sm">
+            View & Book
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif searched %}
+  <div class="text-center py-5">
+    <i class="bi bi-search" style="font-size:4rem;color:#c5cae9;"></i>
+    <h5 class="mt-3 text-muted">No providers found</h5>
+    <p class="text-muted small">Try widening your search — remove filters or try a different city.</p>
+  </div>
+
+{% else %}
+  <!-- Quick category tiles -->
+  <h6 class="text-muted fw-bold text-uppercase small mb-3">Browse by Category</h6>
+  <div class="row g-3">
+    {% for icon, stype, color in [
+      ('bi-droplet-fill','Plumbing','#3b82f6'),
+      ('bi-lightning-charge-fill','Electrical','#f59e0b'),
+      ('bi-tools','Home Repair','#8b5cf6'),
+      ('bi-scissors','Beauty & Salon','#ec4899'),
+      ('bi-house-gear','House Cleaning','#10b981'),
+      ('bi-tree','Gardening','#22c55e'),
+      ('bi-snow2','AC Repair','#06b6d4'),
+      ('bi-bug','Pest Control','#f97316'),
+    ] %}
+    <div class="col-6 col-md-3">
+      <form method="POST" action="{{ url_for('search') }}">
+        <input type="hidden" name="city" value="{{ user_city }}">
+        <input type="hidden" name="service_type" value="{{ stype }}">
+        <button type="submit" class="btn w-100 text-start p-3 shadow-sm" style="background:#fff;border:1px solid rgba(102,126,234,.15);border-radius:14px;">
+          <i class="bi {{ icon }} me-2" style="color:{{ color }};font-size:1.2rem;"></i>
+          <span class="fw-semibold small">{{ stype }}</span>
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% endblock %}

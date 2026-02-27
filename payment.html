@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Payment – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.payment-card { background:linear-gradient(135deg,#667eea,#764ba2); border-radius:20px; color:#fff; }
+.coupon-success { background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:12px; }
+.coupon-error   { background:#f8d7da; border:1px solid #f5c6cb; border-radius:8px; padding:12px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-7">
+
+  <!-- Order summary -->
+  <div class="payment-card shadow p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <div class="small opacity-75 mb-1">Booking #{{ booking.id }}</div>
+        <h4 class="fw-bold mb-0">{{ booking.service_name }}</h4>
+        <div class="opacity-75">{{ booking.provider_name }}</div>
+      </div>
+      <div class="text-end">
+        <div class="small opacity-75">Amount Due</div>
+        <div id="displayAmount" style="font-size:2.2rem;font-weight:900;font-family:'Syne',sans-serif;">
+          ₹{{ "%.0f"|format(booking.payment_amount) }}
+        </div>
+      </div>
+    </div>
+    {% if booking.is_emergency %}
+    <div class="alert alert-warning mb-2 py-2" style="background:rgba(255,255,255,.2);border:none;color:#fff;">
+      <i class="bi bi-lightning-fill me-1"></i>Emergency booking — 20% commission applied
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- PHASE 1: Coupon Section -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold bg-light"><i class="bi bi-ticket-perforated me-2"></i>Apply Coupon</div>
+    <div class="card-body">
+      <div class="input-group mb-2">
+        <input type="text" id="couponInput" class="form-control" placeholder="Enter coupon code…" style="text-transform:uppercase;">
+        <button class="btn btn-outline-primary" type="button" onclick="validateCoupon()">Apply</button>
+      </div>
+      <div class="d-flex gap-2 flex-wrap mb-2">
+        {% for code in ['WELCOME20','FLAT100','EMERGENCY10'] %}
+        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('couponInput').value='{{ code }}'">{{ code }}</button>
+        {% endfor %}
+      </div>
+      <div id="couponMessage"></div>
+      <input type="hidden" id="appliedCoupon" value="">
+      <input type="hidden" id="discountAmt" value="0">
+    </div>
+  </div>
+
+  <!-- PHASE 3: Wallet Section -->
+  {% if wallet and wallet.balance > 0 %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold bg-light d-flex justify-content-between">
+      <span><i class="bi bi-wallet2 me-2"></i>Use Wallet Balance</span>
+      <span class="text-success fw-bold">₹{{ "%.2f"|format(wallet.balance) }} available</span>
+    </div>
+    <div class="card-body">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="useWallet" onchange="updateTotal()">
+        <label class="form-check-label" for="useWallet">
+          Pay with wallet balance (₹{{ "%.2f"|format([wallet.balance, booking.payment_amount]|min) }} will be deducted)
+        </label>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Payment Form -->
+  <div class="card shadow-sm">
+    <div class="card-header fw-bold bg-light"><i class="bi bi-credit-card me-2"></i>Complete Payment</div>
+    <div class="card-body">
+      <div class="mb-3 p-3 rounded" style="background:#f8f9fe;">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted">Service price</span>
+          <span>₹{{ "%.0f"|format(booking.payment_amount) }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1 text-success" id="discountRow" style="display:none!important;">
+          <span>Coupon discount</span>
+          <span id="discountDisplay">-₹0</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1 text-info" id="walletRow" style="display:none!important;">
+          <span>Wallet deduction</span>
+          <span id="walletDisplay">-₹0</span>
+        </div>
+        <hr class="my-2">
+        <div class="d-flex justify-content-between fw-bold">
+          <span>Total Due</span>
+          <span id="totalDue" class="text-primary" style="font-size:1.2rem;">₹{{ "%.0f"|format(booking.payment_amount) }}</span>
+        </div>
+      </div>
+
+      <!-- Demo payment form (replace with Razorpay integration) -->
+      <form method="POST" action="{{ url_for('verify_payment') }}" id="paymentForm">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <input type="hidden" name="payment_id" id="finalPaymentId" value="PAY_DEMO_{{ booking.id }}">
+        <input type="hidden" name="order_id"   id="finalOrderId"   value="ORDER_DEMO_{{ booking.id }}">
+        <input type="hidden" name="coupon_code" id="finalCoupon"   value="">
+        <input type="hidden" name="use_wallet"  id="finalWallet"   value="0">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Card Number</label>
+          <input type="text" class="form-control" placeholder="4242 4242 4242 4242" maxlength="19"
+                 oninput="this.value=this.value.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim()">
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Expiry</label>
+            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">CVV</label>
+            <input type="password" class="form-control" placeholder="•••" maxlength="3">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-3 fw-bold fs-5"
+                onclick="preparePayment()">
+          <i class="bi bi-lock-fill me-2"></i>Pay ₹<span id="payBtnAmt">{{ "%.0f"|format(booking.payment_amount) }}</span>
+        </button>
+
+        <p class="text-center text-muted small mt-3">
+          <i class="bi bi-shield-lock-fill text-success me-1"></i>
+          This is a demo payment. Integrate Razorpay for production.
+        </p>
+      </form>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const originalAmt = {{ booking.payment_amount }};
+const walletBal   = {{ wallet.balance if wallet else 0 }};
+let appliedDiscount = 0;
+
+function validateCoupon() {
+  const code = document.getElementById('couponInput').value.trim().toUpperCase();
+  if (!code) return;
+  const form = new FormData();
+  form.append('code', code);
+  form.append('amount', originalAmt);
+  fetch('{{ url_for("validate_coupon") }}', { method:'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('couponMessage');
+      if (data.ok) {
+        appliedDiscount = data.discount;
+        document.getElementById('appliedCoupon').value = code;
+        el.innerHTML = `<div class="coupon-success small"><i class="bi bi-check-circle-fill text-success me-1"></i>${data.message}</div>`;
+        updateTotal();
+      } else {
+        el.innerHTML = `<div class="coupon-error small"><i class="bi bi-x-circle-fill text-danger me-1"></i>${data.error}</div>`;
+        appliedDiscount = 0;
+        updateTotal();
+      }
+    });
+}
+
+function updateTotal() {
+  const useWallet  = document.getElementById('useWallet')?.checked || false;
+  let total        = originalAmt - appliedDiscount;
+  const walletUsed = useWallet ? Math.min(walletBal, total) : 0;
+  total            = Math.max(total - walletUsed, 0);
+
+  document.getElementById('totalDue').textContent   = '₹' + Math.round(total);
+  document.getElementById('payBtnAmt').textContent  = Math.round(total);
+  document.getElementById('displayAmount').textContent = '₹' + Math.round(originalAmt - appliedDiscount);
+
+  const discRow = document.getElementById('discountRow');
+  if (appliedDiscount > 0) {
+    discRow.style.display = '';
+    document.getElementById('discountDisplay').textContent = '-₹' + Math.round(appliedDiscount);
+  } else { discRow.style.display = 'none'; }
+
+  const walRow = document.getElementById('walletRow');
+  if (walletUsed > 0) {
+    walRow.style.display = '';
+    document.getElementById('walletDisplay').textContent = '-₹' + Math.round(walletUsed);
+  } else { walRow.style.display = 'none'; }
+}
+
+function preparePayment() {
+  document.getElementById('finalCoupon').value = document.getElementById('appliedCoupon').value;
+  document.getElementById('finalWallet').value = document.getElementById('useWallet')?.checked ? '1' : '0';
+}
+
+document.getElementById('couponInput').addEventListener('keyup', e => {
+  if (e.key === 'Enter') validateCoupon();
+  e.target.value = e.target.value.toUpperCase();
+});
+</script>
+{% endblock %}

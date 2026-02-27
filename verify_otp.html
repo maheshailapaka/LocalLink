@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Verify Email – Local Link{% endblock %}
+
+{% block extra_css %}
+<style>
+  .otp-wrap { display: flex; gap: 10px; justify-content: center; margin-bottom: 28px; }
+  .otp-digit {
+    width: 54px; height: 62px;
+    font-size: 1.7rem; font-weight: 800;
+    text-align: center; border: 2.5px solid #c5cae9;
+    border-radius: 12px; background: #f8f9fe;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+    -moz-appearance: textfield;
+  }
+  .otp-digit::-webkit-outer-spin-button,
+  .otp-digit::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .otp-digit:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102,126,234,.18);
+    background: #fff; outline: none;
+  }
+  .otp-digit.filled { border-color: #667eea; background: #eef0ff; }
+
+  .demo-box {
+    background: linear-gradient(135deg, #fff9db, #fff3cd);
+    border: 2px dashed #f6c90e;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .demo-code {
+    font-size: 2.6rem; font-weight: 900;
+    letter-spacing: 10px; color: #667eea;
+    font-family: 'Courier New', monospace;
+    user-select: all; cursor: pointer;
+  }
+  .demo-code:hover { opacity: .8; }
+  .copy-hint { font-size: .72rem; color: #888; margin-top: 4px; }
+
+  .verify-btn-wrap { margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-sm-10">
+    <div class="card shadow-sm">
+      <div class="card-body p-5">
+
+        <!-- Icon -->
+        <div class="text-center mb-4">
+          <div style="width:70px;height:70px;border-radius:50%;
+                      background:linear-gradient(135deg,#667eea,#764ba2);
+                      display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+            <i class="bi bi-envelope-check-fill text-white" style="font-size:2rem;"></i>
+          </div>
+          <h3 class="fw-bold" style="font-family:'Syne',sans-serif;">Verify Your Email</h3>
+          <p class="text-muted mb-1">A 6-digit code was sent to</p>
+          <p class="fw-bold text-primary mb-0">{{ email }}</p>
+        </div>
+
+        <!-- Demo OTP box (shown when SMTP not configured) -->
+        {% if demo_otp %}
+        <div class="demo-box">
+          <div class="fw-bold mb-1" style="color:#b45309;">
+            <i class="bi bi-info-circle-fill"></i> Demo Mode – no real email sent
+          </div>
+          <p class="text-muted small mb-2">Your verification code is:</p>
+          <div class="demo-code" id="demoCode" title="Click to copy" onclick="copyOTP()">{{ demo_otp }}</div>
+          <div class="copy-hint">Click the code to auto-fill ↓</div>
+        </div>
+        {% endif %}
+
+        <!-- OTP Form -->
+        <form method="POST" action="{{ url_for('verify_email') }}" id="otpForm" novalidate>
+          <label class="form-label text-center w-100 fw-semibold mb-3">
+            Enter the 6-digit code
+          </label>
+
+          <div class="otp-wrap" id="otpWrap">
+            <input class="otp-digit" type="number" inputmode="numeric" min="0" max="9" maxlength="1" data-i="0" tabindex="1">
+            <input class="otp-digit" type="number" inputmode="numeric" min="0" max="9" maxlength="1" data-i="1" tabindex="2">
+            <input class="otp-digit" type="number" inputmode="numeric" min="0" max="9" maxlength="1" data-i="2" tabindex="3">
+            <input class="otp-digit" type="number" inputmode="numeric" min="0" max="9" maxlength="1" data-i="3" tabindex="4">
+            <input class="otp-digit" type="number" inputmode="numeric" min="0" max="9" maxlength="1" data-i="4" tabindex="5">
+            <input class="otp-digit" type="number" inputmode="numeric" min="0" max="9" maxlength="1" data-i="5" tabindex="6">
+          </div>
+
+          <!-- Hidden field carries combined OTP -->
+          <input type="hidden" name="otp" id="otpHidden">
+
+          <div class="verify-btn-wrap">
+            <button type="submit" id="verifyBtn" class="btn btn-primary w-100 py-2 fw-bold" disabled>
+              <i class="bi bi-check-circle-fill me-1"></i> Verify Email
+            </button>
+          </div>
+        </form>
+
+        <!-- Resend -->
+        <div class="text-center mt-4">
+          <p class="text-muted small mb-2">Didn't receive the code?</p>
+          <a href="{{ url_for('resend_otp') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-repeat me-1"></i> Resend Code
+          </a>
+        </div>
+
+        <div class="alert alert-light border mt-4 mb-0 py-2 small">
+          <i class="bi bi-clock text-primary"></i>
+          Code expires in <strong>10 minutes</strong>.
+          {% if not demo_otp %}Also check your spam/junk folder.{% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const digits    = Array.from(document.querySelectorAll('.otp-digit'));
+const otpHidden = document.getElementById('otpHidden');
+const verifyBtn = document.getElementById('verifyBtn');
+const otpForm   = document.getElementById('otpForm');
+
+{% if demo_otp %}
+const DEMO_OTP = '{{ demo_otp }}';
+{% else %}
+const DEMO_OTP = null;
+{% endif %}
+
+/* ── Read & sync ─── */
+function getValue(el) {
+  const v = el.value.toString().replace(/\D/g,'');
+  return v.length > 0 ? v[v.length - 1] : '';
+}
+
+function syncHidden() {
+  const code = digits.map(getValue).join('');
+  otpHidden.value  = code;
+  verifyBtn.disabled = code.length < 6;
+  digits.forEach(d => d.classList.toggle('filled', getValue(d) !== ''));
+}
+
+/* ── Input handler ─── */
+digits.forEach((el, i) => {
+  el.addEventListener('input', () => {
+    const v = getValue(el);
+    el.value = v;  /* strip to single digit */
+    syncHidden();
+    if (v && i < digits.length - 1) digits[i + 1].focus();
+  });
+
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Backspace') {
+      if (el.value === '' && i > 0) {
+        digits[i - 1].value = '';
+        digits[i - 1].focus();
+        syncHidden();
+      }
+    }
+    if (e.key === 'ArrowLeft'  && i > 0) digits[i-1].focus();
+    if (e.key === 'ArrowRight' && i < digits.length-1) digits[i+1].focus();
+  });
+
+  /* Handle paste anywhere */
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData)
+                    .getData('text').replace(/\D/g,'').slice(0, 6);
+    pasted.split('').forEach((ch, j) => {
+      if (digits[j]) digits[j].value = ch;
+    });
+    syncHidden();
+    const next = Math.min(pasted.length, digits.length - 1);
+    digits[next].focus();
+  });
+});
+
+/* ── Auto-fill demo OTP ─── */
+function fillOTP(code) {
+  code = String(code).replace(/\D/g,'');
+  digits.forEach((d, i) => { d.value = code[i] || ''; });
+  syncHidden();
+  if (code.length === 6) verifyBtn.focus();
+}
+
+function copyOTP() {
+  if (!DEMO_OTP) return;
+  fillOTP(DEMO_OTP);
+}
+
+/* ── Form submit guard ─── */
+otpForm.addEventListener('submit', e => {
+  /* Make absolutely sure hidden field is populated before submit */
+  syncHidden();
+  if (otpHidden.value.length < 6) {
+    e.preventDefault();
+    digits[0].focus();
+  }
+});
+
+/* Focus first digit on load */
+digits[0].focus();
+</script>
+{% endblock %}

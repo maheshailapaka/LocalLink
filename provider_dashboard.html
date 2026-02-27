@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+{% block title %}Provider Dashboard – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.avail-on  { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+.avail-off { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+.svc-card  { transition:.15s; }
+.svc-card:hover { box-shadow:0 4px 16px rgba(102,126,234,.18)!important; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4 align-items-center">
+  <div class="col">
+    <h3 class="fw-bold mb-0" style="font-family:'Syne',sans-serif;">Provider Dashboard</h3>
+    <p class="text-muted small mb-0">{{ provider.name }} &middot; {{ provider.service_type }} &middot; {{ provider.city }}</p>
+  </div>
+  <div class="col-auto d-flex gap-2 flex-wrap">
+    <button id="availBtn"
+            class="btn btn-sm fw-semibold {{ 'avail-on' if provider.is_available else 'avail-off' }}"
+            onclick="toggleAvailability()">
+      <i class="bi {{ 'bi-circle-fill text-success' if provider.is_available else 'bi-circle text-danger' }} me-1"></i>
+      <span id="availText">{{ 'Online' if provider.is_available else 'Offline' }}</span>
+    </button>
+    <a href="{{ url_for('provider_kyc') }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-shield-check me-1"></i>KYC
+    </a>
+    <a href="{{ url_for('subscriptions_page') }}" class="btn btn-outline-warning btn-sm">
+      <i class="bi bi-star me-1"></i>Plans
+    </a>
+    <a href="{{ url_for('wallet_page') }}" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-wallet2 me-1"></i>₹{{ "%.0f"|format(wallet.balance) }}
+    </a>
+    <a href="{{ url_for('provider_analytics') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-bar-chart me-1"></i>Analytics
+    </a>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm" style="border-top:3px solid #667eea!important;">
+      <div class="card-body py-3">
+        <i class="bi bi-briefcase" style="font-size:1.8rem;color:#667eea;"></i>
+        <h2 class="fw-bold text-primary mt-1 mb-0">{{ services|length }}</h2>
+        <div class="text-muted small fw-semibold text-uppercase">Services</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm" style="border-top:3px solid #43e97b!important;">
+      <div class="card-body py-3">
+        <i class="bi bi-calendar-check" style="font-size:1.8rem;color:#43e97b;"></i>
+        <h2 class="fw-bold mt-1 mb-0" style="color:#43e97b;">{{ bookings|length }}</h2>
+        <div class="text-muted small fw-semibold text-uppercase">Bookings</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm" style="border-top:3px solid #f59e0b!important;">
+      <div class="card-body py-3">
+        <i class="bi bi-star-fill" style="font-size:1.8rem;color:#f59e0b;"></i>
+        <h2 class="fw-bold mt-1 mb-0" style="color:#f59e0b;">{{ reviews|length }}</h2>
+        <div class="text-muted small fw-semibold text-uppercase">Reviews</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm" style="border-top:3px solid #FF6B35!important;">
+      <div class="card-body py-3">
+        <i class="bi bi-award-fill" style="font-size:1.8rem;color:#FF6B35;"></i>
+        <h2 class="fw-bold mt-1 mb-0" style="color:#FF6B35;">{{ provider.trust_score }}</h2>
+        <div class="text-muted small fw-semibold text-uppercase">Trust Score</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KYC banner -->
+{% if kyc_docs %}
+  {% set approved = kyc_docs|selectattr('status','equalto','approved')|list %}
+  {% if approved %}
+  <div class="alert alert-success border-0 shadow-sm mb-4">
+    <i class="bi bi-shield-fill-check me-2"></i>
+    <strong>KYC Verified!</strong> Customers see your verified badge. You rank higher in search.
+  </div>
+  {% else %}
+  <div class="alert alert-warning border-0 shadow-sm mb-4">
+    <i class="bi bi-shield-exclamation me-2"></i>
+    <strong>KYC Pending Review</strong> — {{ kyc_docs|length }} document(s) submitted.
+    <a href="{{ url_for('provider_kyc') }}" class="alert-link ms-2">View status →</a>
+  </div>
+  {% endif %}
+{% else %}
+<div class="alert alert-info border-0 shadow-sm mb-4">
+  <i class="bi bi-shield me-2"></i>
+  Complete <a href="{{ url_for('provider_kyc') }}" class="alert-link">KYC verification</a>
+  to get a Verified badge and rank higher in search results.
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- LEFT -->
+  <div class="col-lg-8">
+
+    <!-- Services -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-briefcase me-2"></i>My Services</h5>
+        <button class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+          <i class="bi bi-plus-circle me-1"></i>Add Service
+        </button>
+      </div>
+      <div class="card-body">
+        {% if services %}
+        <div class="row g-3">
+          {% for svc in services %}
+          <div class="col-md-4">
+            <div class="card svc-card h-100 border">
+              <div class="card-body p-3">
+                <h6 class="fw-bold mb-1">{{ svc.service_name }}</h6>
+                <p class="small text-muted mb-2">{{ svc.description }}</p>
+                <div class="fw-bold text-primary mb-3">₹{{ svc.price }}</div>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-sm btn-outline-primary flex-grow-1"
+                          data-bs-toggle="modal" data-bs-target="#editSvc{{ svc.id }}">
+                    <i class="bi bi-pencil"></i> Edit
+                  </button>
+                  <form method="POST" action="{{ url_for('delete_service', service_id=svc.id) }}"
+                        onsubmit="return confirm('Delete this service?')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Edit Service Modal -->
+          <div class="modal fade" id="editSvc{{ svc.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                  <h5 class="modal-title">Edit Service</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('edit_service', service_id=svc.id) }}">
+                  <div class="modal-body">
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Service Name</label>
+                      <input type="text" name="service_name" class="form-control" value="{{ svc.service_name }}" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Price (₹)</label>
+                      <input type="number" name="price" class="form-control" value="{{ svc.price }}" min="0" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Description</label>
+                      <textarea name="description" class="form-control" rows="3" required>{{ svc.description }}</textarea>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-briefcase" style="font-size:2.5rem;opacity:.3;"></i>
+          <p class="mt-2 mb-0">No services yet. Add your first service above.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Bookings -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-primary text-white fw-bold">
+        <i class="bi bi-calendar-event me-2"></i>Booking Requests
+      </div>
+      <div class="card-body p-0">
+        {% if bookings %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr><th>Customer</th><th>Service</th><th>Date</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+            {% for b in bookings %}
+            <tr>
+              <td>
+                <div class="fw-semibold small">{{ b.customer_name }}</div>
+                <div class="text-muted" style="font-size:.72rem;">{{ b.customer_phone }}</div>
+              </td>
+              <td class="small">
+                {{ b.service_name or '—' }}
+                {% if b.is_emergency %}<span class="badge bg-danger ms-1" style="font-size:.6rem;">Emergency</span>{% endif %}
+              </td>
+              <td class="small text-muted">{{ b.booking_date[:16] if b.booking_date else '—' }}</td>
+              <td class="small">
+                {% if b.payment_amount %}₹{{ "%.0f"|format(b.payment_amount) }}{% else %}—{% endif %}
+              </td>
+              <td>
+                {% if b.status == 'Pending' %}<span class="badge bg-warning text-dark">Pending</span>
+                {% elif b.status == 'Accepted' %}<span class="badge bg-success">Accepted</span>
+                {% elif b.status == 'Completed' %}<span class="badge bg-info">Completed</span>
+                {% elif b.status == 'Cancelled' %}<span class="badge bg-secondary">Cancelled</span>
+                {% else %}<span class="badge bg-danger">{{ b.status }}</span>{% endif %}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  {% if b.status == 'Pending' %}
+                    <a href="{{ url_for('update_booking', booking_id=b.id, status='Accepted') }}"
+                       class="btn btn-success btn-sm">Accept</a>
+                    <a href="{{ url_for('update_booking', booking_id=b.id, status='Rejected') }}"
+                       class="btn btn-outline-danger btn-sm">Reject</a>
+                  {% elif b.status == 'Accepted' %}
+                    <a href="{{ url_for('tracking_page', booking_id=b.id) }}"
+                       class="btn btn-outline-info btn-sm" title="Live Tracking">
+                      <i class="bi bi-geo-alt"></i>
+                    </a>
+                    <a href="{{ url_for('update_booking', booking_id=b.id, status='Completed') }}"
+                       class="btn btn-primary btn-sm">Complete</a>
+                    <a href="{{ url_for('chat', booking_id=b.id) }}"
+                       class="btn btn-outline-secondary btn-sm" title="Chat">
+                      <i class="bi bi-chat"></i>
+                    </a>
+                  {% elif b.status == 'Completed' %}
+                    <a href="{{ url_for('chat', booking_id=b.id) }}"
+                       class="btn btn-outline-secondary btn-sm">
+                      <i class="bi bi-chat"></i>
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
+          <p class="mt-2 mb-0">No booking requests yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Reviews -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-warning text-dark fw-bold">
+        <i class="bi bi-star-fill me-2"></i>Customer Reviews
+      </div>
+      <div class="card-body">
+        {% if reviews %}
+          {% for r in reviews %}
+          <div class="border-bottom pb-3 mb-3">
+            <div class="d-flex justify-content-between">
+              <span class="fw-semibold small">{{ r.customer_name }}</span>
+              <div>
+                {% for i in range(r.rating) %}<i class="bi bi-star-fill text-warning"></i>{% endfor %}
+                {% for i in range(5 - r.rating) %}<i class="bi bi-star text-muted"></i>{% endfor %}
+              </div>
+            </div>
+            <p class="text-muted small mb-0 mt-1">{{ r.comment }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-star" style="font-size:2.5rem;opacity:.3;"></i>
+          <p class="mt-2 mb-0">No reviews yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col-lg-4">
+    <!-- Wallet -->
+    <div class="card shadow-sm mb-4" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="small opacity-75 fw-bold text-uppercase">Wallet Balance</div>
+          <i class="bi bi-wallet2" style="font-size:1.4rem;opacity:.6;"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:900;font-family:'Syne',sans-serif;">
+          ₹{{ "%.2f"|format(wallet.balance) }}
+        </div>
+        <div class="opacity-75 small mb-3">Your earnings after commission</div>
+        <a href="{{ url_for('wallet_page') }}" class="btn btn-light btn-sm w-100 fw-bold text-primary">View Transactions</a>
+      </div>
+    </div>
+
+    <!-- Profile Status -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-bold bg-light">Profile Status</div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="small">Approval</span>
+          {% if provider.approved %}<span class="badge bg-success">Approved</span>
+          {% else %}<span class="badge bg-warning text-dark">Pending</span>{% endif %}
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="small">KYC</span>
+          {% if provider.is_verified %}<span class="badge bg-success">Verified</span>
+          {% else %}<span class="badge bg-secondary">Not Verified</span>{% endif %}
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span class="small">Featured</span>
+          {% if provider.is_featured %}<span class="badge bg-warning text-dark">Featured</span>
+          {% else %}<span class="badge bg-light text-dark border">Standard</span>{% endif %}
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <span class="small">Emergency</span>
+          {% if provider.is_emergency %}<span class="badge bg-danger">Enabled</span>
+          {% else %}<span class="badge bg-light text-dark border">Disabled</span>{% endif %}
+        </div>
+        <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-person-gear me-1"></i>Edit Profile
+        </a>
+      </div>
+    </div>
+
+    <!-- Photos -->
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold bg-light d-flex justify-content-between align-items-center">
+        <span>Work Photos</span>
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
+          <i class="bi bi-upload"></i>
+        </button>
+      </div>
+      <div class="card-body p-2">
+        {% if photos %}
+        <div class="row g-2">
+          {% for p in photos[:9] %}
+          <div class="col-4 position-relative">
+            <img src="{{ url_for('static', filename='uploads/' + p.photo_url) }}"
+                 class="img-fluid rounded" style="height:80px;width:100%;object-fit:cover;"
+                 onerror="this.closest('.col-4').style.display='none'">
+            {% if p.is_profile %}
+            <span class="position-absolute top-0 start-0 badge bg-primary m-1" style="font-size:9px;">Profile</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-3 text-muted small">
+          <i class="bi bi-images" style="font-size:2rem;opacity:.3;"></i>
+          <p class="mt-1 mb-0">No photos yet</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modals ── -->
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Add Service</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('add_service') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Service Name</label>
+            <input type="text" name="service_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Price (₹)</label>
+            <input type="number" name="price" class="form-control" min="0" step="0.01" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea name="description" class="form-control" rows="3" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Service</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="uploadPhotoModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Upload Photo</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="uploadPhotoForm" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Photo <small class="text-muted">(max 5MB)</small></label>
+            <input type="file" name="photo" id="photoFile" class="form-control" accept="image/*" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Caption (optional)</label>
+            <textarea name="caption" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="is_profile" id="isProfile" value="1">
+            <label class="form-check-label" for="isProfile">Set as profile photo</label>
+          </div>
+          <div id="previewWrap" class="d-none">
+            <img id="previewImg" class="img-fluid rounded" style="max-height:200px;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-upload me-1"></i>Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleAvailability() {
+  fetch('{{ url_for("toggle_availability") }}', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+      const btn  = document.getElementById('availBtn');
+      const text = document.getElementById('availText');
+      const icon = btn.querySelector('i');
+      if (d.is_available) {
+        btn.className = 'btn btn-sm fw-semibold avail-on';
+        icon.className = 'bi bi-circle-fill text-success me-1';
+        text.textContent = 'Online';
+      } else {
+        btn.className = 'btn btn-sm fw-semibold avail-off';
+        icon.className = 'bi bi-circle text-danger me-1';
+        text.textContent = 'Offline';
+      }
+    });
+}
+
+document.getElementById('photoFile').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('previewWrap').classList.remove('d-none');
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('uploadPhotoForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const btn = this.querySelector('[type=submit]');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading…';
+  btn.disabled  = true;
+  fetch('{{ url_for("upload_provider_photo") }}', { method: 'POST', body: new FormData(this) })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Error: ' + d.error); })
+    .catch(() => alert('Upload failed'))
+    .finally(() => { btn.innerHTML = '<i class="bi bi-upload me-1"></i>Upload'; btn.disabled = false; });
+});
+</script>
+{% endblock %}

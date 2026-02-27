@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Notifications – Local Link{% endblock %}
+{% block extra_css %}
+<style>
+.notif-item { transition:.2s; border-left: 4px solid transparent; }
+.notif-item:hover { background: #f8f9ff; }
+.notif-item.unread { border-left-color: #667eea; background: #f0f2ff; }
+.notif-item.unread:hover { background: #e8ebff; }
+.notif-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.notif-time { font-size: .72rem; color: #94a3b8; }
+.type-booking { background: #dbeafe; }
+.type-payment { background: #dcfce7; }
+.type-review  { background: #fef9c3; }
+.type-info    { background: #f3f4f6; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-0" style="font-family:'Syne',sans-serif;">
+        <i class="bi bi-bell-fill text-primary me-2"></i>Notifications
+      </h3>
+      <p class="text-muted small mb-0">Stay up to date on your bookings and activity</p>
+    </div>
+    {% if notifications %}
+    <form method="POST" action="{{ url_for('notifications_clear') }}">
+      <button type="submit" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-trash me-1"></i>Clear All
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if notifications %}
+    <div class="card shadow-sm overflow-hidden">
+      {% for n in notifications %}
+      <div class="notif-item p-3 d-flex gap-3 border-bottom {% if not n.is_read %}unread{% endif %}">
+        <div class="notif-icon type-{{ n.type }}">
+          {% if n.type == 'booking' %}<i class="bi bi-calendar-check text-primary"></i>
+          {% elif n.type == 'payment' %}<i class="bi bi-credit-card text-success"></i>
+          {% elif n.type == 'review'  %}<i class="bi bi-star-fill text-warning"></i>
+          {% else %}<i class="bi bi-info-circle text-secondary"></i>{% endif %}
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="fw-semibold small {% if not n.is_read %}text-primary{% endif %}">{{ n.title }}</div>
+            <span class="notif-time ms-3 flex-shrink-0">{{ n.created_at[5:16] }}</span>
+          </div>
+          <div class="text-muted small mt-1">{{ n.body }}</div>
+          {% if n.link %}
+          <a href="{{ n.link }}" class="btn btn-sm btn-outline-primary mt-2 py-0 px-2" style="font-size:.72rem;">
+            View <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+          {% endif %}
+        </div>
+        {% if not n.is_read %}
+        <div class="flex-shrink-0 pt-1">
+          <span class="bg-primary rounded-circle d-inline-block" style="width:8px;height:8px;"></span>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card shadow-sm text-center py-5">
+      <i class="bi bi-bell-slash" style="font-size:3.5rem;color:#c5cae9;"></i>
+      <h5 class="mt-3 text-muted">No notifications yet</h5>
+      <p class="text-muted small">You'll be notified about bookings, payments, and reviews here.</p>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-primary mt-2">Go to Dashboard</a>
+    </div>
+  {% endif %}
+
+</div>
+</div>
+{% endblock %}
