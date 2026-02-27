@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Local Link{% endblock %}
+
+{% block content %}
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-graph-up text-success"></i> Provider Analytics</h2>
+        <p class="text-muted">Comprehensive insights into your business performance</p>
+    </div>
+</div>
+
+<!-- Key Metrics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <i class="bi bi-eye" style="font-size: 2.5rem; color: #667eea;"></i>
+                <h3 class="mt-3 mb-0">{{ analytics.views }}</h3>
+                <p class="text-muted">Profile Views</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <i class="bi bi-calendar-check" style="font-size: 2.5rem; color: #f093fb;"></i>
+                <h3 class="mt-3 mb-0">{{ analytics.total_bookings }}</h3>
+                <p class="text-muted">Total Bookings</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <i class="bi bi-currency-rupee" style="font-size: 2.5rem; color: #43e97b;"></i>
+                <h3 class="mt-3 mb-0">₹{{ "%.2f"|format(analytics.revenue) }}</h3>
+                <p class="text-muted">Total Revenue</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <i class="bi bi-star-fill" style="font-size: 2.5rem; color: #feca57;"></i>
+                <h3 class="mt-3 mb-0">{{ analytics.avg_rating }} ⭐</h3>
+                <p class="text-muted">Average Rating</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-graph-up"></i> Conversion Rate</h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="progress mb-3" style="height: 30px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: {{ analytics.conversion_rate }}%">
+                        {{ "%.2f"|format(analytics.conversion_rate) }}%
+                    </div>
+                </div>
+                <p class="text-muted mb-0">
+                    {{ analytics.unique_viewers }} unique viewers → {{ analytics.total_bookings }} bookings
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-check-circle"></i> Completion Rate</h6>
+            </div>
+            <div class="card-body text-center">
+                {% set completion_rate = (analytics.completed_bookings / analytics.total_bookings * 100) if analytics.total_bookings > 0 else 0 %}
+                <div class="progress mb-3" style="height: 30px;">
+                    <div class="progress-bar bg-info" role="progressbar" 
+                         style="width: {{ completion_rate }}%">
+                        {{ "%.2f"|format(completion_rate) }}%
+                    </div>
+                </div>
+                <p class="text-muted mb-0">
+                    {{ analytics.completed_bookings }} / {{ analytics.total_bookings }} bookings completed
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Rating Distribution</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="ratingChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-graph-up"></i> Views Timeline (Last 30 Days)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="viewsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Items -->
+<div class="card shadow-sm">
+    <div class="card-header bg-success text-white">
+        <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Insights & Recommendations</h6>
+    </div>
+    <div class="card-body">
+        <ul>
+            {% if analytics.conversion_rate < 3 %}
+            <li><strong>Improve Conversion:</strong> Your conversion rate is {{ "%.2f"|format(analytics.conversion_rate) }}%. Consider adding more photos and detailed service descriptions.</li>
+            {% endif %}
+            {% if analytics.avg_rating < 4 %}
+            <li><strong>Boost Rating:</strong> Your average rating is {{ analytics.avg_rating }}. Focus on customer service quality to improve ratings.</li>
+            {% endif %}
+            {% if analytics.completed_bookings < analytics.total_bookings * 0.8 %}
+            <li><strong>Complete More Bookings:</strong> Completion rate could be higher. Ensure you're delivering all accepted bookings.</li>
+            {% endif %}
+            {% if analytics.views > 100 and analytics.total_bookings < 10 %}
+            <li><strong>Convert Views to Bookings:</strong> You have good visibility. Add competitive pricing and special offers to increase bookings.</li>
+            {% endif %}
+            {% if analytics.total_bookings > 20 and analytics.avg_rating >= 4.5 %}
+            <li><strong>Excellent Performance!</strong> Keep up the great work. Consider expanding your service offerings.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<script>
+// Rating Distribution Chart
+const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+new Chart(ratingCtx, {
+    type: 'bar',
+    data: {
+        labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+        datasets: [{
+            label: 'Number of Reviews',
+            data: [
+                {{ analytics.rating_distribution[1] }},
+                {{ analytics.rating_distribution[2] }},
+                {{ analytics.rating_distribution[3] }},
+                {{ analytics.rating_distribution[4] }},
+                {{ analytics.rating_distribution[5] }}
+            ],
+            backgroundColor: [
+                '#ff6b6b',
+                '#feca57',
+                '#48dbfb',
+                '#1dd1a1',
+                '#10ac84'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Views Timeline Chart
+const viewsCtx = document.getElementById('viewsChart').getContext('2d');
+new Chart(viewsCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for view in analytics.views_timeline %}
+                '{{ view.date }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Profile Views',
+            data: [
+                {% for view in analytics.views_timeline %}
+                    {{ view.views }},
+                {% endfor %}
+            ],
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+
+{% endblock %}
