@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – Local Link{% endblock %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+  <div class="col">
+    <h3 class="fw-bold mb-0" style="font-family:'Syne',sans-serif;">
+      Welcome back, {{ session.user_name }}!
+    </h3>
+    <p class="text-muted mb-0 small">{{ session.city or 'Your local community hub' }}</p>
+  </div>
+  <div class="col-auto d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('wallet_page') }}" class="btn btn-outline-success btn-sm fw-semibold">
+      <i class="bi bi-wallet2 me-1"></i>₹{{ "%.0f"|format(wallet.balance) }}
+    </a>
+    {% if subscription %}
+    <span class="btn btn-warning btn-sm fw-semibold" style="pointer-events:none;">
+      <i class="bi bi-star-fill me-1"></i>{{ subscription.plan_name }}
+    </span>
+    {% else %}
+    <a href="{{ url_for('subscriptions_page') }}" class="btn btn-outline-warning btn-sm">
+      <i class="bi bi-star me-1"></i>Go Pro
+    </a>
+    {% endif %}
+    <a href="{{ url_for('search') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-search me-1"></i>Find Services
+    </a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm h-100" style="border-top:3px solid #667eea!important;">
+      <div class="card-body py-4">
+        <i class="bi bi-calendar-check" style="font-size:2rem;color:#667eea;"></i>
+        <h2 class="fw-bold text-primary mt-1">{{ bookings|length }}</h2>
+        <p class="text-muted mb-0 small fw-semibold text-uppercase">Bookings</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm h-100" style="border-top:3px solid #43e97b!important;">
+      <div class="card-body py-4">
+        <i class="bi bi-check-circle-fill" style="font-size:2rem;color:#43e97b;"></i>
+        <h2 class="fw-bold mt-1" style="color:#43e97b;">{{ bookings|selectattr('status','equalto','Completed')|list|length }}</h2>
+        <p class="text-muted mb-0 small fw-semibold text-uppercase">Completed</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm h-100" style="border-top:3px solid #f59e0b!important;">
+      <div class="card-body py-4">
+        <i class="bi bi-clock-fill" style="font-size:2rem;color:#f59e0b;"></i>
+        <h2 class="fw-bold mt-1" style="color:#f59e0b;">{{ bookings|selectattr('status','equalto','Pending')|list|length }}</h2>
+        <p class="text-muted mb-0 small fw-semibold text-uppercase">Pending</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm h-100" style="border-top:3px solid #FF6B35!important;">
+      <div class="card-body py-4">
+        <i class="bi bi-wallet2" style="font-size:2rem;color:#FF6B35;"></i>
+        <h2 class="fw-bold mt-1" style="color:#FF6B35;">₹{{ "%.0f"|format(wallet.balance) }}</h2>
+        <p class="text-muted mb-0 small fw-semibold text-uppercase">Wallet</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- LEFT: Bookings -->
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2"></i>My Bookings</h5>
+        <a href="{{ url_for('search') }}" class="btn btn-light btn-sm text-primary fw-bold">+ New</a>
+      </div>
+      <div class="card-body p-0">
+        {% if bookings %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Service / Provider</th>
+                <th>Date</th>
+                <th class="text-end">Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for b in bookings %}
+            <tr>
+              <td>
+                <div class="fw-semibold small">{{ b.service_name or 'Service' }}
+                  {% if b.is_emergency %}<span class="badge bg-danger ms-1" style="font-size:.6rem;">Emergency</span>{% endif %}
+                </div>
+                <div class="text-muted" style="font-size:.75rem;">{{ b.provider_name }}</div>
+                {% if b.coupon_code %}
+                <div><span class="badge bg-success" style="font-size:.6rem;">{{ b.coupon_code }}</span></div>
+                {% endif %}
+              </td>
+              <td class="small text-muted">
+                {% if b.booking_date %}{{ b.booking_date[:16] }}{% else %}—{% endif %}
+              </td>
+              <td class="text-end">
+                {% if b.payment_amount %}
+                <div class="fw-semibold">₹{{ "%.0f"|format(b.payment_amount) }}</div>
+                {% if b.discount_amount and b.discount_amount > 0 %}
+                <div class="text-success" style="font-size:.72rem;">-₹{{ "%.0f"|format(b.discount_amount) }}</div>
+                {% endif %}
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if b.status == 'Pending' %}<span class="badge bg-warning text-dark">Pending</span>
+                {% elif b.status == 'Accepted' %}<span class="badge bg-success">Accepted</span>
+                {% elif b.status == 'Completed' %}<span class="badge bg-info">Completed</span>
+                {% elif b.status == 'Cancelled' %}<span class="badge bg-secondary">Cancelled</span>
+                {% else %}<span class="badge bg-danger">{{ b.status }}</span>{% endif %}
+              </td>
+              <td>
+                <div class="d-flex gap-1 flex-wrap">
+                  {% if b.payment_status == 'Pending' and b.status != 'Cancelled' %}
+                    <a href="{{ url_for('payment_page', booking_id=b.id) }}" class="btn btn-primary btn-sm">
+                      Pay
+                    </a>
+                  {% endif %}
+                  {% if b.status == 'Accepted' %}
+                    <a href="{{ url_for('tracking_page', booking_id=b.id) }}" class="btn btn-outline-info btn-sm" title="Track">
+                      <i class="bi bi-geo-alt"></i>
+                    </a>
+                    <a href="{{ url_for('chat', booking_id=b.id) }}" class="btn btn-outline-primary btn-sm" title="Chat">
+                      <i class="bi bi-chat"></i>
+                    </a>
+                  {% endif %}
+                  {% if b.status == 'Completed' %}
+                    <a href="{{ url_for('provider_detail', provider_id=b.provider_id) }}" class="btn btn-outline-warning btn-sm" title="Review">
+                      <i class="bi bi-star"></i>
+                    </a>
+                  {% endif %}
+                  {% if b.status in ('Pending', 'Accepted') %}
+                    <form method="POST" action="{{ url_for('cancel_booking', booking_id=b.id) }}"
+                          onsubmit="return confirm('Cancel this booking?')">
+                      <button type="submit" class="btn btn-outline-danger btn-sm" title="Cancel">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-inbox" style="font-size:3.5rem;color:#c5cae9;"></i>
+          <p class="text-muted mt-3">No bookings yet.</p>
+          <a href="{{ url_for('search') }}" class="btn btn-primary">Find Services</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- AI Recommendations -->
+    {% if recommended %}
+    <div class="card shadow-sm">
+      <div class="card-header text-white fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+        <i class="bi bi-robot me-2"></i>Recommended For You
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+        {% for p in recommended[:3] %}
+        <div class="col-md-4">
+          <div class="card border h-100">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold small">{{ p.name }}</span>
+                <span class="trust-score-badge">{{ p.trust_score }}</span>
+              </div>
+              <span class="badge bg-primary mb-2 small">{{ p.service_type }}</span>
+              <p class="small text-muted mb-2"><i class="bi bi-geo-alt-fill text-danger"></i> {{ p.locality }}, {{ p.city }}</p>
+              <a href="{{ url_for('provider_detail', provider_id=p.id) }}" class="btn btn-sm btn-outline-primary w-100">Book</a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col-lg-4">
+    <!-- Emergency -->
+    <div class="card shadow-sm mb-4" style="border-left:4px solid #fc8181!important;">
+      <div class="card-header text-white fw-bold" style="background:linear-gradient(135deg,#ff6b6b,#ee5a24);">
+        <i class="bi bi-telephone-fill me-2"></i>Emergency Contacts
+      </div>
+      <div class="card-body p-0">
+        {% for e in emergency %}
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+          <span class="fw-semibold small">{{ e.name }}</span>
+          <a href="tel:{{ e.phone }}" class="btn btn-danger btn-sm">{{ e.phone }}</a>
+        </div>
+        {% else %}
+        <p class="text-muted small text-center py-3">No emergency contacts.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-bold bg-light small text-uppercase text-muted">Quick Links</div>
+      <div class="card-body p-2">
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('wallet_page') }}" class="btn btn-outline-success btn-sm text-start">
+            <i class="bi bi-wallet2 me-2"></i>Wallet — ₹{{ "%.0f"|format(wallet.balance) }}
+          </a>
+          <a href="{{ url_for('subscriptions_page') }}" class="btn btn-outline-warning btn-sm text-start">
+            <i class="bi bi-star me-2"></i>Subscription Plans
+          </a>
+          <a href="{{ url_for('enterprise_page') }}" class="btn btn-outline-dark btn-sm text-start">
+            <i class="bi bi-building me-2"></i>Enterprise
+          </a>
+          <a href="{{ url_for('notifications_page') }}" class="btn btn-outline-primary btn-sm text-start">
+            <i class="bi bi-bell me-2"></i>Notifications
+          </a>
+          <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-secondary btn-sm text-start">
+            <i class="bi bi-person-gear me-2"></i>Edit Profile
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feed preview -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center fw-bold">
+        <span><i class="bi bi-chat-dots-fill me-2"></i>Local Feed</span>
+        <a href="{{ url_for('feed') }}" class="text-white small">All →</a>
+      </div>
+      <div class="card-body p-2">
+        {% for post in feed_posts %}
+        <div class="p-2 mb-1 rounded" style="background:#f8f9fe;">
+          <div class="fw-bold small text-primary">{{ post.user_name }}</div>
+          <div class="small">{{ post.content[:80] }}{% if post.content|length > 80 %}…{% endif %}</div>
+        </div>
+        {% else %}
+        <p class="text-muted small text-center py-3">No posts yet.</p>
+        {% endfor %}
+        <a href="{{ url_for('feed') }}" class="btn btn-sm btn-outline-success w-100 mt-1">Post Something</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

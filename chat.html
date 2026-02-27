@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Chat – {{ other_user_name }} | Local Link{% endblock %}
+
+{% block extra_css %}
+<style>
+  #chatBox {
+    height: 460px; overflow-y: auto; background: #f0f2ff;
+    padding: 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+  #chatBox::-webkit-scrollbar { width: 5px; }
+  #chatBox::-webkit-scrollbar-thumb { background: #c5cae9; border-radius: 3px; }
+  .msg-row { display: flex; }
+  .msg-row.mine   { justify-content: flex-end; }
+  .msg-row.theirs { justify-content: flex-start; }
+  .bubble {
+    max-width: 68%; padding: 10px 14px; border-radius: 18px;
+    font-size: .93rem; line-height: 1.5; word-break: break-word;
+  }
+  .mine   .bubble { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-bottom-right-radius:4px; }
+  .theirs .bubble { background:#fff; color:#2d3748; border:1px solid #e2e8f0; border-bottom-left-radius:4px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .bubble .sender-name { font-size:.72rem; font-weight:700; margin-bottom:3px; opacity:.7; }
+  .bubble .msg-time    { font-size:.68rem; opacity:.5; margin-top:4px; text-align:right; }
+  #statusBar {
+    padding:6px 16px; font-size:.78rem; min-height:28px;
+    background:#f8f9fe; border-top:1px solid #e8eaf6;
+    display:flex; align-items:center; gap:6px;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; background:#ccc; transition:background .3s; }
+  .dot.live    { background:#43e97b; }
+  .dot.offline { background:#fc8181; }
+  #typingIndicator { font-size:.76rem; color:#667eea; padding:2px 16px; min-height:20px; font-style:italic; }
+  #msgInput  { border-radius:24px; padding-left:18px; border:1.5px solid #c5cae9; }
+  #msgInput:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.15); outline:none; }
+  #sendBtn   { border-radius:24px; padding:0 22px; font-weight:700; min-width:70px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm overflow-hidden">
+
+      <!-- Header -->
+      <div class="card-header d-flex justify-content-between align-items-center py-3"
+           style="background:linear-gradient(135deg,#667eea,#764ba2);">
+        <div class="text-white">
+          <i class="bi bi-chat-dots-fill me-1"></i>
+          <strong>{{ other_user_name }}</strong>
+          <span class="small ms-2 opacity-75">Booking #{{ booking_id }}</span>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-sm fw-bold">
+          <i class="bi bi-arrow-left"></i> Back
+        </a>
+      </div>
+
+      <!-- Messages -->
+      <div id="chatBox">
+        {% for m in messages %}
+          {% set mine = (m.sender_id == session.user_id) %}
+          <div class="msg-row {{ 'mine' if mine else 'theirs' }}" data-msg-id="{{ m.id }}">
+            <div class="bubble">
+              {% if not mine %}<div class="sender-name">{{ m.sender_name }}</div>{% endif %}
+              <div>{{ m.message }}</div>
+              <div class="msg-time">
+                {{ m.created_at[11:16] if m.created_at|length > 10 else m.created_at }}
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div id="emptyState" class="text-center text-muted m-auto py-5">
+            <i class="bi bi-chat" style="font-size:2.5rem;opacity:.2;"></i>
+            <p class="mt-2 small">No messages yet — start the conversation!</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Typing indicator -->
+      <div id="typingIndicator"></div>
+
+      <!-- Status bar -->
+      <div id="statusBar">
+        <span class="dot" id="connDot"></span>
+        <span id="connLabel" class="text-muted">Connecting…</span>
+      </div>
+
+      <!-- Input -->
+      <div class="card-footer bg-white border-top py-3">
+        <form id="chatForm" class="d-flex gap-2">
+          <input id="msgInput" type="text" class="form-control"
+                 placeholder="Type a message…" autocomplete="off" maxlength="500">
+          <button id="sendBtn" type="submit" class="btn btn-primary">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Socket.IO client library (CDN, matches Flask-SocketIO 5.x) -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const BOOKING_ID = {{ booking_id }};
+const MY_ID      = {{ session.user_id }};
+const MY_NAME    = {{ session.user_name | tojson }};
+
+const chatBox  = document.getElementById('chatBox');
+const connDot  = document.getElementById('connDot');
+const connLbl  = document.getElementById('connLabel');
+const chatForm = document.getElementById('chatForm');
+const msgInput = document.getElementById('msgInput');
+const sendBtn  = document.getElementById('sendBtn');
+const typingEl = document.getElementById('typingIndicator');
+
+/* ── Helpers ─────────────────────────────────────────── */
+const scrollBottom = () => { chatBox.scrollTop = chatBox.scrollHeight; };
+scrollBottom();
+
+const esc = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function setStatus(mode, text) {
+  connDot.className = 'dot ' + mode;
+  connLbl.textContent = text;
+}
+
+function addBubble({ id, sender_id, sender_name, message, timestamp }) {
+  if (id && document.querySelector(`[data-msg-id="${id}"]`)) return;
+  const ph = document.getElementById('emptyState');
+  if (ph) ph.remove();
+
+  const mine = parseInt(sender_id) === MY_ID;
+  const row  = document.createElement('div');
+  row.className = 'msg-row ' + (mine ? 'mine' : 'theirs');
+  if (id) row.dataset.msgId = id;
+  row.style.cssText = 'opacity:0;transform:translateY(6px);transition:all .2s';
+  row.innerHTML =
+    `<div class="bubble">
+       ${!mine ? `<div class="sender-name">${esc(sender_name)}</div>` : ''}
+       <div>${esc(message)}</div>
+       <div class="msg-time">${esc(timestamp)}</div>
+     </div>`;
+  chatBox.appendChild(row);
+  scrollBottom();
+  requestAnimationFrame(() => {
+    row.style.opacity = '1';
+    row.style.transform = 'translateY(0)';
+  });
+}
+
+/* ── Socket.IO ───────────────────────────────────────── */
+const socket = io({ transports: ['websocket'], upgrade: false });
+
+socket.on('connect', () => {
+  setStatus('live', 'Connected ✓');
+  socket.emit('join_chat', { booking_id: BOOKING_ID });
+});
+socket.on('disconnect',    () => setStatus('offline', 'Disconnected — reconnecting…'));
+socket.on('connect_error', () => setStatus('offline', 'Connection error…'));
+
+socket.on('new_message', data => addBubble(data));
+
+/* Typing indicator: auto-clears after 2.5 s of silence */
+let typingTimer;
+socket.on('typing', data => {
+  typingEl.textContent = `${esc(data.sender_name)} is typing…`;
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => { typingEl.textContent = ''; }, 2500);
+});
+
+/* ── Send ────────────────────────────────────────────── */
+chatForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const text = msgInput.value.trim();
+  if (!text) return;
+  msgInput.value = '';
+  msgInput.focus();
+  socket.emit('send_chat_message', { booking_id: BOOKING_ID, message: text });
+});
+
+/* Throttled typing emit (once per 2 s) */
+let typingSent = false;
+msgInput.addEventListener('input', () => {
+  if (!typingSent) {
+    socket.emit('typing', { booking_id: BOOKING_ID });
+    typingSent = true;
+    setTimeout(() => { typingSent = false; }, 2000);
+  }
+});
+
+window.addEventListener('beforeunload', () =>
+  socket.emit('leave_chat', { booking_id: BOOKING_ID }));
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Commission Report – Local Link{% endblock %}
+{% block content %}
+<div class="row mb-4 align-items-center">
+  <div class="col">
+    <h4 class="fw-bold mb-0" style="font-family:'Syne',sans-serif;">
+      <i class="bi bi-percent me-2 text-primary"></i>Commission Report
+    </h4>
+    <p class="text-muted small mb-0">Platform earnings from all completed bookings</p>
+  </div>
+  <div class="col-auto">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">← Back</a>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center" style="border-top:3px solid #667eea!important;">
+      <div class="card-body">
+        <div class="text-muted small fw-bold text-uppercase mb-1">Gross Revenue</div>
+        <h3 class="fw-bold text-primary">₹{{ "%.0f"|format(summary.gross or 0) }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center" style="border-top:3px solid #43e97b!important;">
+      <div class="card-body">
+        <div class="text-muted small fw-bold text-uppercase mb-1">Total Commission</div>
+        <h3 class="fw-bold text-success">₹{{ "%.0f"|format(summary.total_comm or 0) }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center" style="border-top:3px solid #feca57!important;">
+      <div class="card-body">
+        <div class="text-muted small fw-bold text-uppercase mb-1">Providers Earning</div>
+        <h3 class="fw-bold" style="color:#f0a500;">{{ commission_data|length }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center" style="border-top:3px solid #FF6B35!important;">
+      <div class="card-body">
+        <div class="text-muted small fw-bold text-uppercase mb-1">Avg Commission Rate</div>
+        <h3 class="fw-bold text-danger">
+          {% if summary.gross and summary.gross > 0 %}
+            {{ "%.1f"|format(summary.total_comm / summary.gross * 100) }}%
+          {% else %}0%{% endif %}
+        </h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Commission Rate Info -->
+<div class="alert alert-info border-0 mb-4">
+  <div class="d-flex gap-4 flex-wrap">
+    <div><i class="bi bi-tag-fill text-info me-1"></i><strong>Standard Booking:</strong> 15% commission</div>
+    <div><i class="bi bi-lightning-fill text-danger me-1"></i><strong>Emergency Booking:</strong> 20% commission</div>
+  </div>
+</div>
+
+<!-- Detailed Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-table me-2"></i>Provider-wise Commission Breakdown</h6>
+  </div>
+  <div class="card-body p-0">
+    {% if commission_data %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Provider</th>
+            <th>Service Type</th>
+            <th class="text-center">Bookings</th>
+            <th class="text-end">Gross Revenue</th>
+            <th class="text-end">Commission</th>
+            <th class="text-end">Emergency Comm.</th>
+            <th class="text-end">Provider Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in commission_data %}
+          <tr>
+            <td class="fw-semibold">{{ row.provider_name }}</td>
+            <td><span class="badge bg-light text-dark border">{{ row.service_type }}</span></td>
+            <td class="text-center">{{ row.total_bookings }}</td>
+            <td class="text-end">₹{{ "%.0f"|format(row.gross_revenue or 0) }}</td>
+            <td class="text-end fw-bold text-success">₹{{ "%.0f"|format(row.total_commission or 0) }}</td>
+            <td class="text-end text-danger">₹{{ "%.0f"|format(row.emergency_commission or 0) }}</td>
+            <td class="text-end text-primary">₹{{ "%.0f"|format((row.gross_revenue or 0) - (row.total_commission or 0)) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-bold">
+          <tr>
+            <td colspan="4" class="text-end">TOTAL</td>
+            <td class="text-end text-success">₹{{ "%.0f"|format(summary.total_comm or 0) }}</td>
+            <td></td>
+            <td class="text-end text-primary">₹{{ "%.0f"|format((summary.gross or 0) - (summary.total_comm or 0)) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-receipt" style="font-size:2.5rem;opacity:.3;"></i>
+      <p class="mt-2">No completed bookings yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
