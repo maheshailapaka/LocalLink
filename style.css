@@ -1,0 +1,54 @@
+/* LocalLink Enhanced Styles */
+.hover-shadow { transition: transform 0.2s, box-shadow 0.2s; }
+.hover-shadow:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102,126,234,0.2) !important; }
+
+.trust-score-badge {
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+    color: #1a5c3a; font-weight: 800;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 0.75rem; display: inline-block;
+}
+
+.emergency-pill {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white; padding: 3px 10px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 700;
+}
+
+.card { transition: box-shadow 0.2s; }
+.btn { font-weight: 600; }
+.badge { letter-spacing: 0.3px; }
+
+.provider-card-hero {
+    background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08));
+    border-radius: 12px; padding: 20px;
+}
+
+/* Trust Index bar */
+.trust-bar { height: 8px; border-radius: 4px; background: #e9ecef; overflow: hidden; }
+.trust-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #43e97b, #38f9d7); transition: width 0.6s; }
+
+/* Feed category tags */
+.feed-tag-general { background: #e2e8f0; color: #4a5568; }
+.feed-tag-question { background: #bee3f8; color: #2b6cb0; }
+.feed-tag-recommendation { background: #fefcbf; color: #744210; }
+.feed-tag-sell { background: #e9d8fd; color: #553c9a; }
+.feed-tag-alert { background: #fed7d7; color: #9b2c2c; }
+
+/* Chat styles */
+#chatMessages::-webkit-scrollbar { width: 6px; }
+#chatMessages::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+/* Onboarding steps */
+.step-number {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.1rem; flex-shrink: 0;
+}
+
+/* Navbar active link */
+.navbar-nav .nav-link.active { color: white !important; font-weight: 700; }
+
+/* Footer links */
+footer a:hover { color: white !important; }
